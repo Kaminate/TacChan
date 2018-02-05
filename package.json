@@ -7,7 +7,8 @@
   "description": "Matchmaking backend",
   "main": "index.js",
   "author": "Nate Park",
-  "license": "GPLv3",
+  "//": "Must be a string from https://spdx.org/licenses/"
+  "license": "GPL-3.0-only",
   "engines":
   {
     "//": "Specify a node.js version for the gcloud app deploy",
