@@ -58,5 +58,5 @@ typings/
 .env
 
 # vim text editor temp files
-.swp
+*.swp
 
