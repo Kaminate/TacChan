@@ -1,0 +1,6 @@
+# This file configures google cloud machine settings
+
+
+runtime: nodejs
+env: flex
+
