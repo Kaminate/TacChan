@@ -1,4 +1,7 @@
 # Tac Chan  
+
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/df150cb15a1c4555896cdfe050f40f1b)](https://www.codacy.com/app/Kaminate/tacChan?utm_source=github.com&utm_medium=referral&utm_content=Kaminate/tacChan&utm_campaign=badger)
+
 This repository contains the full source code for the tac chan web backend.  
 Tac chan is a server app running on a website, which allows for a common hostname 
 for players to find each other and start games.  
