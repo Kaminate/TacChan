@@ -6,22 +6,42 @@
 
 var express = require( "express" )
 var app = express()
-var port = null
+var port = process.env.PORT || 8081
 var rootPath = "/"
-function rootHttpGetCallback( request, response )
+
+function TacIsDebug()
 {
-  // Using String() over toString() because it always works
+  return app.get( "env" ) == "development"
+}
+
+function TacAssert( value )
+{
+  if( !TacIsDebug() )
+    return
+  console.assert( value )
+}
+
+function TacDebugLog( text )
+{
+  if( !TacIsDebug() )
+    return
+  console.log( text )
+}
+
+function TacRootHttpGetCallback( request, response )
+{
+  // Using over port.toString() because it always works
   var text = "Hello world, port: " + String( port )
   response.status( 200 ).send( text )
 }
 
-app.get( rootPath, rootHttpGetCallback )
+app.get( rootPath, TacRootHttpGetCallback )
 
 var server = null
-function serverListenCallback()
+function TacServerListenCallback()
 {
-  port = server.address().port
-  console.log( "Listening on port: " + String( port ) )
+  TacAssert( port == server.address().port )
+  TacDebugLog( "Listening on port: " + String( port ) )
 }
-server = app.listen( process.env.PORT || 8081, serverListenCallback )
+server = app.listen( port, TacServerListenCallback )
 
