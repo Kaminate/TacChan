@@ -2,7 +2,7 @@
   "name": "tacchan",
   "version": "1.0.0",
   "description": "Matchmaking backend",
-  "main": "index.js",
+  "main": "server.js",
   "author": "Nate Park",
   "license": "Must be a string from https://spdx.org/licenses/",
   "license": "GPL-3.0-only",

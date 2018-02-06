@@ -17,15 +17,11 @@ function rootHttpGetCallback( request, response )
 
 app.get( rootPath, rootHttpGetCallback )
 
-// if( module === require.main )
-// {
-  function serverListenCallback()
-  {
-    port = server.address().port
-    console.log( "Listening on port: " + String( port ) )
-  }
-  var server = app.listen( process.env.PORT || 8081, serverListenCallback )
-// }
-
-module.exports = app
+var server = null
+function serverListenCallback()
+{
+  port = server.address().port
+  console.log( "Listening on port: " + String( port ) )
+}
+server = app.listen( process.env.PORT || 8081, serverListenCallback )
 
