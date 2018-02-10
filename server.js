@@ -4,44 +4,63 @@
 // Treat warnings as errors
 "use strict"
 
-var express = require( "express" )
-var app = express()
+var tac = require( "./tacUtils" )
+
+// var express = require( "express" )
+var http = require( "http" )
+var util = require( "util" )
+// var app = express()
 var port = process.env.PORT || 8081
 var rootPath = "/"
+var shouldLogRequests = true
 
-function TacIsDebug()
-{
-  return app.get( "env" ) == "development"
-}
-
-function TacAssert( value )
-{
-  if( !TacIsDebug() )
-    return
-  console.assert( value )
-}
-
-function TacDebugLog( text )
-{
-  if( !TacIsDebug() )
-    return
-  console.log( text )
-}
-
-function TacRootHttpGetCallback( request, response )
+function TacRootHttpOnGet( request, response )
 {
   // Using over port.toString() because it always works
   var text = "Hello world, port: " + String( port )
   response.status( 200 ).send( text )
 }
 
-app.get( rootPath, TacRootHttpGetCallback )
+// http.get( rootPath, TacRootHttpOnGet )
+//app.get( rootPath, TacRootHttpOnGet )
 
 var server = null
-function TacServerListenCallback()
+
+/*
+function TacServerOnListen()
 {
   TacAssert( port == server.address().port )
-  TacDebugLog( "Listening on port: " + String( port ) )
+  tac.DebugLog( "Listening on port: " + String( port ) )
+  // To check how recently nodemon reloaded
 }
-server = app.listen( port, TacServerListenCallback )
+*/
+function TacRequestListener( request, response )
+{
+  if( shouldLogRequests )
+    tac.DebugLog( "Request" )
+  response.writeHead( 200, { "Content-Type": "text/plain" } );
+  response.write( "Hello World" );
+  response.end();
+}
+tac.DebugLog( "Creating Server" )
+server = http.createServer( TacRequestListener )
+server.listen( port )
+// server = http.listen( port, TacServerOnListen )
+//server = app.listen( port, TacServerOnListen )
+function TacServerOnConnection( a, b, c, d )
+{
+  var iArg = 0
+  for( var arg in arguments )
+  {
+    tac.DebugLog( iArg )
+    iArg++
+  }
+}
+server.on( "connection", TacServerOnConnection )
+
+function TacServerOnUpgrade( request, socket, header )
+{
+  tac.DebugLog( "on upgrade" );
+}
+server.on( "upgrade", TacServerOnUpgrade )
 

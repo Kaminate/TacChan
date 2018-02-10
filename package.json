@@ -4,19 +4,17 @@
   "description": "Matchmaking backend",
   "main": "server.js",
   "author": "Nate Park",
-  "license": "Must be a string from https://spdx.org/licenses/",
   "license": "GPL-3.0-only",
   "engines":
   {
-    "node": "Specify a node.js version for the gcloud app deploy",
     "node": "8.x"
   },
   "dependencies":
   {
-    "express": "^4.16.2"
+    "express": "^4.16.2",
+    "socket.io": "^2.0.4"
   },
-  "repository":
-  {
+  "repository": {
     "type": "git",
     "url": "git+https://github.com/Kaminate/tacChan.git"
   }
