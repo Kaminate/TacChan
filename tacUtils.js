@@ -37,12 +37,12 @@ tac.DebugLog = function( ...args )
   // because the debug log also spits into a file
   console.log( ...args )
   var line = util.format( ...args ) + "\n"
-  fs.appendFile( debugLogPath, line, ( err )=>{} )
+  fs.appendFile( debugLogPath, line, ( err ) => {} )
 }
 
 if( tac.IsDebug() )
 {
-  fs.truncate( debugLogPath, ( err )=>{} )
+  fs.truncate( debugLogPath, ( err ) => {} )
   tac.DebugLog( new Date().toString() )
 }
 
