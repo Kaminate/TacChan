@@ -9,12 +9,8 @@
   {
     "node": "8.x"
   },
-  "dependencies":
+  "repository":
   {
-    "express": "^4.16.2",
-    "socket.io": "^2.0.4"
-  },
-  "repository": {
     "type": "git",
     "url": "git+https://github.com/Kaminate/tacChan.git"
   }
