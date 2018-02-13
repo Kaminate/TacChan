@@ -38,9 +38,9 @@ function TacRequestListener( request, response )
 {
   if( shouldLogRequests )
     tac.DebugLog( "Request" )
-  response.writeHead( 200, { "Content-Type": "text/plain" } );
-  response.write( "Hello World" );
-  response.end();
+  response.writeHead( 200, { "Content-Type": "text/plain" } )
+  response.write( "Hello World" )
+  response.end()
 }
 tac.DebugLog( "Creating Server" )
 server = http.createServer( TacRequestListener )
@@ -53,6 +53,7 @@ function TacServerOnConnection( a, b, c, d )
   for( var arg in arguments )
   {
     tac.DebugLog( iArg )
+    tac.DebugLog( arg )
     iArg++
   }
 }
@@ -60,7 +61,22 @@ server.on( "connection", TacServerOnConnection )
 
 function TacServerOnUpgrade( request, socket, header )
 {
-  tac.DebugLog( "on upgrade" );
+  // can the socket disconnect during this function?
+  
+  tac.DebugLog( "on upgrade" )
+  tac.DebugLog( "header = ", header )
+  var headers = 
+  [
+    "HTTP/1.1 101 Switching Procols",
+    "Upgrade: websocket",
+    "Connection: Upgrade",
+    "Sec-Websocket-Accept: 123",
+    "Sec-WebSocket-Protocol: tacbogus"
+  ]
+  var text = headers.join( "\r\n" )
+  text += "\r\n"
+  tac.DebugLog( "socket.write: ", text )
+  socket.write( text )
 }
 server.on( "upgrade", TacServerOnUpgrade )
 
