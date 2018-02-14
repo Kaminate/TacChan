@@ -13,6 +13,10 @@ var util = require( "util" )
 var port = process.env.PORT || 8081
 var rootPath = "/"
 var shouldLogRequests = true
+var shouldLogConnections = true
+var shouldLogWebsocketData = true
+var shouldEchoWebsocketData = true
+
 
 function TacRootHttpOnGet( request, response )
 {
@@ -37,7 +41,7 @@ function TacServerOnListen()
 function TacRequestListener( request, response )
 {
   if( shouldLogRequests )
-    tac.DebugLog( "Request" )
+    tac.DebugLog( "TacRequestListener()" )
   response.writeHead( 200, { "Content-Type": "text/plain" } )
   response.write( "Hello World" )
   response.end()
@@ -49,15 +53,34 @@ server.listen( port )
 //server = app.listen( port, TacServerOnListen )
 function TacServerOnConnection( a, b, c, d )
 {
-  var iArg = 0
-  for( var arg in arguments )
+  if( shouldLogConnections )
   {
-    tac.DebugLog( iArg )
-    tac.DebugLog( arg )
-    iArg++
+    tac.DebugLog( "TacServerOnConnection()" )
+    var iArg = 0
+    for( var arg in arguments )
+    {
+      tac.DebugLog( iArg )
+      tac.DebugLog( arg )
+      iArg++
+    }
   }
 }
 server.on( "connection", TacServerOnConnection )
+
+function TacWebsocketOnData( buffer )
+{
+  var socket = this
+  if( shouldLogWebsocketData )
+  {
+    tac.DebugLog( "TacWebsocketOnData()" )
+    tac.DebugLog( buffer.toString() )
+  }
+  if( shouldEchoWebsocketData )
+  {
+    // In socket.write( data ), what's the type of data?
+    socket.write( buffer )
+  }
+}
 
 function TacServerOnUpgrade( request, socket, header )
 {
@@ -77,6 +100,7 @@ function TacServerOnUpgrade( request, socket, header )
   text += "\r\n"
   tac.DebugLog( "socket.write: ", text )
   socket.write( text )
+  socket.on( "data", TacWebsocketOnData )
 }
 server.on( "upgrade", TacServerOnUpgrade )
 
