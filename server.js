@@ -47,6 +47,27 @@ function TacRequestListener( request, response )
   response.end()
 }
 tac.DebugLog( "Creating Server" )
+var lines =
+[
+  "",
+  "//",
+  "// TODO",
+  "//",
+  "// uhh...",
+  "// oh yeah. It would be nice to have a way to visualize variables.",
+  "// and tweak them",
+  "// SERVERSIDE",
+  "//",
+  "// ( i need to ask leif )",
+  "//",
+  "//",
+  "",
+];
+for( let iLine = 0; iLine < lines.length; ++iLine )
+{
+  var line = lines[ iLine ]
+  tac.DebugLog( line );
+}
 server = http.createServer( TacRequestListener )
 server.listen( port )
 // server = http.listen( port, TacServerOnListen )
