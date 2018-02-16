@@ -14,8 +14,9 @@ var port = process.env.PORT || 8081
 var rootPath = "/"
 var shouldLogRequests = true
 var shouldLogConnections = true
-var shouldLogWebsocketData = true
+var shouldLogWebsocketData = false
 var shouldEchoWebsocketData = true
+var shouldPrintEchoWriteResults = false
 
 
 function TacRootHttpOnGet( request, response )
@@ -62,11 +63,11 @@ var lines =
   "//",
   "//",
   "",
-];
+]
 for( let iLine = 0; iLine < lines.length; ++iLine )
 {
   var line = lines[ iLine ]
-  tac.DebugLog( line );
+  tac.DebugLog( line )
 }
 server = http.createServer( TacRequestListener )
 server.listen( port )
@@ -99,7 +100,18 @@ function TacWebsocketOnData( buffer )
   if( shouldEchoWebsocketData )
   {
     // In socket.write( data ), what's the type of data?
-    socket.write( buffer )
+    var socketWriteResult = socket.write( buffer )
+    if( shouldPrintEchoWriteResults )
+    {
+      if( socketWriteResult )
+      {
+        tac.DebugLog( "the entire data was flushed successfully to the kernel buffer" )
+      }
+      else
+      {
+        tac.DebugLog( "all or part of the data was queued in user memory" )
+      }
+    }
   }
 }
 
