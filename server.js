@@ -15,9 +15,45 @@ var rootPath = "/"
 var shouldLogRequests = true
 var shouldLogConnections = true
 var shouldLogWebsocketData = false
-var shouldEchoWebsocketData = true
-var shouldPrintEchoWriteResults = false
+var shouldLogUpgrade = false
+var shouldEchoWebsocketData = false
+var shouldLogEchoWriteResults = false
+var shouldLogWebsocketClose = true
+var userIDCounter = 0
+var users = [];
+tac.users = users;
 
+/*
+function TacFindUserBySocket( socket )
+{
+  for( let iUser = 0; iUser < tac.users.length; iUser++ )
+  {
+    var user = tac.users[ iUser ]
+    if( user.socket == socket )
+      return user
+  }
+  // does this return null?
+}
+*/
+
+// return undefined on failure
+function TacGetUserIndexBySocket( socket )
+{
+  for( let iUser = 0; iUser < tac.users.length; iUser++ )
+  {
+    var user = tac.users[ iUser ]
+    if( user.socket == socket )
+    {
+      return iUser;
+    }
+  }
+}
+function TacRemoveSocket( socket )
+{
+  var iUser = TacGetUserIndexBySocket( socket )
+  tac.DebugLog( "iUser: " + iUser )
+  tac.users.splice( iUser, 1 )
+}
 
 
 function TacRootHttpOnGet( request, response )
@@ -49,6 +85,7 @@ function TacRequestListener( request, response )
   response.end()
 }
 tac.DebugLog( "Creating Server" )
+
 var lines =
 [
   "",
@@ -74,18 +111,11 @@ server = http.createServer( TacRequestListener )
 server.listen( port )
 // server = http.listen( port, TacServerOnListen )
 //server = app.listen( port, TacServerOnListen )
-function TacServerOnConnection( a, b, c, d )
+function TacServerOnConnection( socket )
 {
   if( shouldLogConnections )
   {
     tac.DebugLog( "TacServerOnConnection()" )
-    var iArg = 0
-    for( var arg in arguments )
-    {
-      tac.DebugLog( iArg )
-      tac.DebugLog( arg )
-      iArg++
-    }
   }
 }
 server.on( "connection", TacServerOnConnection )
@@ -102,7 +132,7 @@ function TacWebsocketOnData( buffer )
   {
     // In socket.write( data ), what's the type of data?
     var socketWriteResult = socket.write( buffer )
-    if( shouldPrintEchoWriteResults )
+    if( shouldLogEchoWriteResults )
     {
       if( socketWriteResult )
       {
@@ -116,12 +146,24 @@ function TacWebsocketOnData( buffer )
   }
 }
 
+
+function TacWebsocketOnClose( had_error )
+{
+  var socket = this
+  if( shouldLogWebsocketClose )
+  {
+    var text = "Websocket on close"
+    if( had_error )
+      text += " due to transmission error "
+    tac.DebugLog( text )
+  }
+  TacRemoveSocket( socket )
+}
+
 function TacServerOnUpgrade( request, socket, header )
 {
   // can the socket disconnect during this function?
   
-  tac.DebugLog( "on upgrade" )
-  tac.DebugLog( "header = ", header )
   var headers = 
   [
     "HTTP/1.1 101 Switching Procols",
@@ -132,9 +174,20 @@ function TacServerOnUpgrade( request, socket, header )
   ]
   var text = headers.join( "\r\n" )
   text += "\r\n"
-  tac.DebugLog( "socket.write: ", text )
+  if( shouldLogUpgrade )
+  {
+    tac.DebugLog( "on upgrade" )
+    tac.DebugLog( "header = ", header )
+    tac.DebugLog( "socket.write: ", text )
+  }
   socket.write( text )
   socket.on( "data", TacWebsocketOnData )
+  socket.on( "close", TacWebsocketOnClose )
+
+  var user = {}
+  user.socket = socket
+  user.userID = userIDCounter++
+  tac.users.push( user )
 }
 server.on( "upgrade", TacServerOnUpgrade )
 
