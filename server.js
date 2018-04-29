@@ -1,81 +1,66 @@
 // This is the main script file that the server is running
 //
 
+
 // Treat warnings as errors
 "use strict"
 
 var tac = require( "./tacUtils" )
-
-// var express = require( "express" )
 var http = require( "http" )
 var util = require( "util" )
-// var app = express()
 var port = process.env.PORT || 8081
 var rootPath = "/"
 var shouldLogRequests = true
 var shouldLogConnections = true
-var shouldLogWebsocketData = false
+var shouldLogWebsocketData = true
 var shouldLogUpgrade = false
-var shouldEchoWebsocketData = false
-var shouldLogEchoWriteResults = false
+var shouldEchoWebsocketData = true
 var shouldLogWebsocketClose = true
+var shouldLogWebsocketEnd = true
+var shouldLogWebsocketError = true
+var shouldLogWebsocketTimeout = true
+// mirrored in tacscriptgameclient.h
+var MatchMessageCreateRoom = "create room"
 var userIDCounter = 0
-var users = [];
-tac.users = users;
+var users = []
+tac.users = users
 
-/*
-function TacFindUserBySocket( socket )
-{
-  for( let iUser = 0; iUser < tac.users.length; iUser++ )
-  {
-    var user = tac.users[ iUser ]
-    if( user.socket == socket )
-      return user
-  }
-  // does this return null?
-}
-*/
+var rooms = []
+tac.rooms = rooms
 
-// return undefined on failure
-function TacGetUserIndexBySocket( socket )
+function TacGetUserInfoBySocket( socket )
 {
   for( let iUser = 0; iUser < tac.users.length; iUser++ )
   {
     var user = tac.users[ iUser ]
     if( user.socket == socket )
     {
-      return iUser;
+      var userInfo = {}
+      userInfo.iUser = iUser
+      userInfo.user = user
+      return userInfo
     }
   }
 }
+
+function TacGetUserBySocket( socket )
+{
+  return TacGetUserInfoBySocket( socket ).user;
+}
+
 function TacRemoveSocket( socket )
 {
-  var iUser = TacGetUserIndexBySocket( socket )
-  tac.DebugLog( "iUser: " + iUser )
-  tac.users.splice( iUser, 1 )
+  var userInfo = TacGetUserInfoBySocket( socket )
+  var iUser = userInfo.iUser;
+  if( shouldLogWebsocketClose )
+  {
+    tac.DebugLog( "Removed iUser " + iUser )
+  }
+  tac.users.splice( userInfo.iUser, 1 )
 }
-
-
-function TacRootHttpOnGet( request, response )
-{
-  // Using over port.toString() because it always works
-  var text = "Hello world, port: " + String( port )
-  response.status( 200 ).send( text )
-}
-
-// http.get( rootPath, TacRootHttpOnGet )
-//app.get( rootPath, TacRootHttpOnGet )
 
 var server = null
 
-/*
-function TacServerOnListen()
-{
-  TacAssert( port == server.address().port )
-  tac.DebugLog( "Listening on port: " + String( port ) )
-  // To check how recently nodemon reloaded
-}
-*/
 function TacRequestListener( request, response )
 {
   if( shouldLogRequests )
@@ -109,8 +94,6 @@ for( let iLine = 0; iLine < lines.length; ++iLine )
 }
 server = http.createServer( TacRequestListener )
 server.listen( port )
-// server = http.listen( port, TacServerOnListen )
-//server = app.listen( port, TacServerOnListen )
 function TacServerOnConnection( socket )
 {
   if( shouldLogConnections )
@@ -120,29 +103,64 @@ function TacServerOnConnection( socket )
 }
 server.on( "connection", TacServerOnConnection )
 
+
+function TacMatchMessageOnCreateRoom( user )
+{
+  var socket = user.socket
+  tac.DebugLog( "Create room request received" )
+  if( user.room )
+  {
+    socket.write( "You are already in a room" )
+    return
+  }
+  var room = {}
+  room.users = [ user ]
+  user.room = room
+  tac.rooms.push( room )
+  socket.write( "Created room" )
+}
+
 function TacWebsocketOnData( buffer )
 {
   var socket = this
+  var user = TacGetUserBySocket( socket )
+  var bufferString = buffer.toString()
+  if( bufferString == MatchMessageCreateRoom )
+    TacMatchMessageOnCreateRoom( user )
+
   if( shouldLogWebsocketData )
   {
-    tac.DebugLog( "TacWebsocketOnData()" )
-    tac.DebugLog( buffer.toString() )
+    tac.DebugLog( "TacWebsocketOnData()" + bufferString )
   }
   if( shouldEchoWebsocketData )
   {
-    // In socket.write( data ), what's the type of data?
-    var socketWriteResult = socket.write( buffer )
-    if( shouldLogEchoWriteResults )
-    {
-      if( socketWriteResult )
-      {
-        tac.DebugLog( "the entire data was flushed successfully to the kernel buffer" )
-      }
-      else
-      {
-        tac.DebugLog( "all or part of the data was queued in user memory" )
-      }
-    }
+    socket.write( buffer )
+  }
+}
+
+function TacWebsocketOnTimeout()
+{
+  if( shouldLogWebsocketTimeout )
+  {
+    tac.DebugLog( "Websocket on timeout" )
+  }
+}
+
+function TacWebsocketOnError( error )
+{
+  var errorMessage = error.toString();
+  if( shouldLogWebsocketError )
+  {
+    tac.DebugLog( "Websocket on error " + errorMessage )
+  }
+}
+
+function TacWebsocketOnEnd()
+{
+  var socket = this // is this true?
+  if( shouldLogWebsocketEnd )
+  {
+    tac.DebugLog( "Websocket on end( other end sent a FIN packet )" )
   }
 }
 
@@ -154,7 +172,10 @@ function TacWebsocketOnClose( had_error )
   {
     var text = "Websocket on close"
     if( had_error )
-      text += " due to transmission error "
+      text += "( due to transmission error )"
+    else
+      text += "( not due to transmission error )"
+
     tac.DebugLog( text )
   }
   TacRemoveSocket( socket )
@@ -183,6 +204,10 @@ function TacServerOnUpgrade( request, socket, header )
   socket.write( text )
   socket.on( "data", TacWebsocketOnData )
   socket.on( "close", TacWebsocketOnClose )
+  socket.on( "end", TacWebsocketOnEnd )
+  socket.on( "error", TacWebsocketOnError )
+  socket.on( "timeout", TacWebsocketOnTimeout )
+
 
   var user = {}
   user.socket = socket

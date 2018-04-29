@@ -35,15 +35,15 @@ tac.DebugLog = function( ...args )
     return
   // This should be the only console.log in all tac code,
   // because the debug log also spits into a file
-  console.log( ...args )
-  var line = util.format( ...args ) + "\n"
-  fs.appendFile( debugLogPath, line, ( err ) => {} )
+  var line = new Date().toString() + util.format( ...args )
+  console.log( line )
+  fs.appendFile( debugLogPath, line + "\n", ( err ) => {} )
 }
 
 if( tac.IsDebug() )
 {
   fs.truncate( debugLogPath, ( err ) => {} )
-  tac.DebugLog( new Date().toString() )
+  tac.DebugLog( "Debug Mode Activated" )
 }
 
 module.exports = tac
