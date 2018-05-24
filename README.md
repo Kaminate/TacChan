@@ -4,7 +4,17 @@
 
 This repository contains the full source code for the tac chan web backend.  
 Tac chan is a server app running on a website, which allows for a common hostname 
-for players to find each other and start games.  
+which players use to find games.  
+
+# How to use
+
+> git clone https://github.com/Kaminate/TacChan
+> cd TacChan
+> node tacServer
+> ( in a browser such as chrome or firefox ) http://localhost:8081
+> ( on the website ) Press the button "Add socket"
+> ( on the website ) Press the button "Print Socket Ready State"
+
 
 # License  
 (c) 2018 Nate Park  

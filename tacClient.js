@@ -30,6 +30,10 @@ var Client = function()
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Protocol_upgrade_mechanism
     // The WebSocket() constructor does all the work of creating an initial HTTP/1.1
     // connection then handling the handshaking and upgrade process for you.
+
+
+    // var myTCPSocket = new TCPSocket()
+
     var socket = new WebSocket( "ws://" + window.location.host )
 
     /*

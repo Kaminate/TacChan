@@ -268,6 +268,10 @@ function TacServerOnUpgrade( request, socket, header )
   var handshakeResult2 = crypto.createHash( "sha1" )
     .update(  handshakeKey + handshakeSuffix )
     .digest( "base64" )
+  var handshakeResult3 = crypto.createHash( "sha1" )
+    .update(  handshakeKey + handshakeSuffix, "ascii" )
+    .digest( "base64" )
+
   
   var headers = 
   [
@@ -286,9 +290,10 @@ function TacServerOnUpgrade( request, socket, header )
     tac.DebugLog( "on upgrade" )
     tac.DebugLog( "header = ", header.toString() )
     tac.DebugLog( "request.headers = ", request.headers )
-    tac.DebugLog( "header handshakeKey    = ", handshakeKey )
-    tac.DebugLog( "header handshakeResult = ", handshakeResult )
-    tac.DebugLog( "header handshakeResult2= ", handshakeResult2 )
+    tac.DebugLog( "header handshakeKey      = ", handshakeKey )
+    tac.DebugLog( "header handshakeResult 1 = ", handshakeResult )
+    tac.DebugLog( "header handshakeResult 2 = ", handshakeResult2 )
+    tac.DebugLog( "header handshakeResult 3 = ", handshakeResult3 )
     tac.DebugLog( "socket.write: ", text )
   }
 
