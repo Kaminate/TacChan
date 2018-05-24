@@ -8,12 +8,12 @@ which players use to find games.
 
 # How to use
 
-> git clone https://github.com/Kaminate/TacChan
-> cd TacChan
-> node tacServer
-> ( in a browser such as chrome or firefox ) http://localhost:8081
-> ( on the website ) Press the button "Add socket"
-> ( on the website ) Press the button "Print Socket Ready State"
+> git clone https://github.com/Kaminate/TacChan  
+> cd TacChan  
+> node tacServer  
+> ( in a browser such as chrome or firefox ) http://localhost:8081  
+> ( on the website ) Press the button "Add socket"  
+> ( on the website ) Press the button "Print Socket Ready State"  
 
 
 # License  
