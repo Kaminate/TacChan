@@ -40,13 +40,8 @@ var Client = function()
       "Connection: Upgrade",
       "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
       "Sec-WebSocket-Version: 13" ]
-    var text = "";
-    for( var line in lines )
-    {
-      text += line
-      text += "\r\n"
-    }
-    socket.send( text )
+    var text = lines.join( "\r\n" ) + "\r\n";
+    socket.send( text ) // error: cannot send while socket is in CONNECTING state
     */
 
     client.socket = socket

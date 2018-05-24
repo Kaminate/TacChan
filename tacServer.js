@@ -89,17 +89,18 @@ function TacRequestListener( request, response )
     // wikipedia.org/wiki/Media_type
     var dotoffset = filepath.lastIndexOf( "." )
     var fileExtension = filepath.substr( dotoffset + 1 )
-    switch( fileExtension )
-    {
-      case "css" : return "text/css"
-      case "gif" : return "image/gif"
-      case "html": return "text/html"
-      case "ico": return "image/x-icon"
-      case "jpg" : return "image/jpeg"
-      case "js": return "text/javascript"
-      case "png" : return "image/png"
-    }
-    return "text/plain"
+    var mapping = {}
+    mapping[ "css"  ] = "text/css"
+    mapping[ "gif"  ] = "image/gif"
+    mapping[ "html" ] = "text/html"
+    mapping[ "ico"  ] = "image/x-icon"
+    mapping[ "jpg"  ] = "image/jpeg"
+    mapping[ "js"   ] = "text/javascript"
+    mapping[ "png"  ] = "image/png"
+    var result = mapping[ fileExtension ]
+    if( result == undefined )
+      return "text/plain"
+    return result
   }
 
   function TrySendFileToClient( response, filepath )
@@ -107,8 +108,8 @@ function TacRequestListener( request, response )
     var allowedFiles = [
       "favicon.ico",
       "dat.gui.min.js",
-      "client.js",
-      "client.html" ]
+      "tacClient.js",
+      "tacClient.html" ]
     var included = allowedFiles.includes( filepath )
     if( !included )
     {
@@ -131,7 +132,7 @@ function TacRequestListener( request, response )
   // remove the first "/" character
   var filepath = request.url.substring( 1 )
   if( filepath == "" )
-    filepath = "client.html"
+    filepath = "tacClient.html"
   TrySendFileToClient( response, filepath )
 }
 tac.DebugLog( "Creating Server" )
@@ -237,13 +238,13 @@ function TacWebsocketOnEnd()
 }
 
 
-function TacWebsocketOnClose( had_error )
+function TacWebsocketOnClose( hadError )
 {
   var socket = this
   if( shouldLogWebsocketClose )
   {
     var text = "Websocket on close"
-    if( had_error )
+    if( hadError )
       text += "( due to transmission error )"
     else
       text += "( not due to transmission error )"
@@ -275,16 +276,11 @@ function TacServerOnUpgrade( request, socket, header )
     "Connection: Upgrade",
     "Sec-Websocket-Accept: " + handshakeResult,
     // "Sec-WebSocket-Protocol: tacbogus"
-
     //"HTTP/1.1 101 Web Socket Protocol Handshake",
     //"Upgrade: WebSocket",
     //"Connection: Upgrade",
-   
-
-
   ]
-  var text = headers.join( "\r\n" )
-  text += "\r\n"
+  var text = headers.join( "\r\n" ) + "\r\n";
   if( shouldLogUpgrade )
   {
     tac.DebugLog( "on upgrade" )
