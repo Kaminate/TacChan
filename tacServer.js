@@ -9,11 +9,15 @@
 // Treat warnings as errors
 "use strict"
 
+
+
+
 var tac = require( "./tacUtils" )
 var http = require( "http" )
 var util = require( "util" )
 var fs = require( "fs" )
 var crypto = require( "crypto" );
+var express = null
 var port = process.env.PORT || 8081
 var rootPath = "/"
 var shouldLogRequests = true
@@ -28,11 +32,26 @@ var shouldLogWebsocketTimeout = true
 // mirrored in tacscriptgameclient.h
 var MatchMessageCreateRoom = "create room"
 var userIDCounter = 0
+
+// begin express vars
+var shouldUseExpress = true
+var app = null
+if( shouldUseExpress )
+{
+  express = require( "express" )
+  // app is a javascript function, designed to be passed to node's HTTP servers
+  // as a callback to handle requests
+  app = express()
+}
+// end express vars
+
+
 var users = []
 tac.users = users
 
 var rooms = []
 tac.rooms = rooms
+
 
 function TacClearConsole()
 {
@@ -154,7 +173,22 @@ for( let iLine = 0; iLine < lines.length; ++iLine )
   var line = lines[ iLine ]
   tac.DebugLog( line )
 }
-server = http.createServer( TacRequestListener )
+
+if( shouldUseExpress )
+{
+  server = http.createServer( app )
+  // server.on( "request", TacRequestListener )
+  app.get( "/", TacRequestListener )
+  // __dirname is a string that evaluates to the cur module dir
+  tac.DebugLog( "Static dir: " + __dirname )
+  app.use( express.static( __dirname ) )
+
+}
+else
+{
+  server = http.createServer( TacRequestListener )
+}
+
 server.listen( port )
 function TacServerOnConnection( socket )
 {

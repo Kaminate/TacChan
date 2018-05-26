@@ -5,13 +5,14 @@
   "main": "tacServer.js",
   "author": "Nate Park",
   "license": "GPL-3.0-only",
-  "engines":
-  {
+  "engines": {
     "node": "8.x"
   },
-  "repository":
-  {
+  "repository": {
     "type": "git",
     "url": "git+https://github.com/Kaminate/tacChan.git"
+  },
+  "dependencies": {
+    "express": "^4.16.3"
   }
 }
