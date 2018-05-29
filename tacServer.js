@@ -126,7 +126,6 @@ function TacRequestListener( request, response )
   {
     var allowedFiles = [
       "favicon.ico",
-      "dat.gui.min.js",
       "tacClient.js",
       "tacClient.html" ]
     var included = allowedFiles.includes( filepath )
@@ -313,7 +312,10 @@ function TacServerOnUpgrade( request, socket, header )
     "Upgrade: websocket",
     "Connection: Upgrade",
     "Sec-Websocket-Accept: " + handshakeResult,
-    // "Sec-WebSocket-Protocol: tacbogus"
+
+    "Sec-WebSocket-Protocol: tacbogus",
+    "Sec-WebSocket-Extensions:"
+    
     //"HTTP/1.1 101 Web Socket Protocol Handshake",
     //"Upgrade: WebSocket",
     //"Connection: Upgrade",
