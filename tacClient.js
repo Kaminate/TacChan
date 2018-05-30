@@ -50,9 +50,8 @@ function testButton( arg0, arg1 )
   console.log( "this.bar: " + this.bar )
 }
 
-var Client = function()
+function Client ()
 {
-
   this.foo = "hi"
   this.bar = function() { SetDisplay( "bar" ) }
   this.qux = function() { SetDisplay( "qux" ) }
@@ -65,7 +64,7 @@ var Client = function()
   CreateButton( this, "Send message to server", function(){
     if( this.socket )
       this.socket.send( "Ping" )
- } )
+  } )
   CreateButton( this, "Add socket", this.AddSocket )
 
   this.AddSocket();
@@ -142,8 +141,8 @@ Client.prototype.AddSocket = function ()
     var socket = null
     try
     {
-      // socket = new WebSocket( "ws://" + window.location.host, "tacbogus" )
-      socket = new WebSocket( "ws://echo.websocket.org" )
+      socket = new WebSocket( "ws://" + window.location.host, "tacbogus" )
+      // socket = new WebSocket( "ws://echo.websocket.org" )
         
     }
     catch( e )

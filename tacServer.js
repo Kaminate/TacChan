@@ -9,8 +9,12 @@
 // Treat warnings as errors
 "use strict"
 
-
-
+var usingWS = false
+var WebSocket = null
+if( usingWS )
+{
+  WebSocket = require( "ws" );
+}
 
 var tac = require( "./tacUtils" )
 var http = require( "http" )
@@ -34,7 +38,7 @@ var MatchMessageCreateRoom = "create room"
 var userIDCounter = 0
 
 // begin express vars
-var shouldUseExpress = true
+var shouldUseExpress = false
 var app = null
 if( shouldUseExpress )
 {
@@ -186,7 +190,31 @@ if( shouldUseExpress )
 else
 {
   server = http.createServer( TacRequestListener )
+  //server = new http.createServer()
 }
+
+var wss = null
+if( usingWS )
+{
+  wss = new WebSocket.Server( { server } )
+  function WSIncomingMessage( message )
+  {
+    var ws = this
+    console.log( "Recieved" + message )
+    console.log( message )
+    ws.send( "ws pong " + message )
+  }
+  function WSSConnection( ws )
+  {
+    ws.on( "message", WSIncomingMessage )
+    ws.send( "something" )
+  }
+  wss.on( "connection", WSSConnection )
+}
+
+
+
+
 
 server.listen( port )
 function TacServerOnConnection( socket )
@@ -206,7 +234,9 @@ function TacServerOnConnection( socket )
   // socket.write( "hellooooooo" )
 }
 
-server.on( "connection", TacServerOnConnection )
+// server.on( "connection", TacServerOnConnection )
+//
+
 
 
 
@@ -226,10 +256,142 @@ function TacMatchMessageOnCreateRoom( user )
   socket.write( "Created room" )
 }
 
+
+
+function TacFrameParser()
+{
+  this.readByteCount = 0
+  this.readBitCount = 0
+  this.buffer = null
+  this.isLittleEndian = new Uint8Array( new Uint32Array( [ 0x12345678 ] ).buffer )[ 0 ] == 0x78
+}
+TacFrameParser.prototype.EatNetworkBytes = function ( byteCount )
+{
+  console.assert( this.readBitCount == 0 )
+  var result = 0
+  var shiftSign = this.isLittleEndian ? -1 : 1;
+  var shiftBits = this.isLittleEndian ? 0 : ( byteCount - 1 ) * 8;
+  for( var i = 0; i < byteCount; ++i )
+  {
+    var subResult = this.buffer[ this.readByteCount + i ]
+    result += subResult << shiftBits
+    shiftBits += shiftSign * 8
+  }
+  this.readByteCount += byteCount
+  return result
+}
+TacFrameParser.prototype.EatBits = function ( bitCount )
+{
+  var result = 0
+  var remainingBitCount = bitCount
+
+  while( remainingBitCount > 0 )
+  {
+    var bitsCanReadCount = 8 - this.readBitCount
+    var bitsToReadCount = Math.min( bitsCanReadCount, remainingBitCount )
+
+    // grab the whole byte
+    var subResult = this.buffer[ this.readByteCount ]
+
+    // shift the bits we want to the front
+    subResult >>= 8 - ( this.readBitCount + bitsToReadCount )
+
+    // mask off the remainder, which includes bits we've already read
+    subResult &= ( 1 << bitsToReadCount ) - 1
+
+    // make room for our bits in the result
+    result <<= bitsToReadCount
+
+    // add our bits to the result
+    result |= subResult
+
+    // housekeeping
+    remainingBitCount -= bitsToReadCount
+    this.readBitCount += bitsToReadCount
+    if( this.readBitCount == 8 )
+    {
+      this.readBitCount = 0
+      this.readByteCount++
+    }
+  }
+
+  return result
+}
+/*
+TacFrameParser.prototype.EatBit = function ()
+{
+  var result = 0
+  result += this.buffer[ this.readByteCount ]
+  result &= ( 1 << this.readBitCount ) + 1
+  result >>= this.readBitCount
+  this.readBitCount++
+  if( this.readBitCount == 8 )
+  {
+    this.readBitCount = 0
+    this.readByteCount++
+  }
+  return result
+}
+*/
+
 function TacWebsocketOnData( buffer )
 {
   var socket = this
   var user = TacGetUserBySocket( socket )
+
+
+  console.assert( Buffer.isBuffer( buffer ) )
+
+  var frameParser = new TacFrameParser
+  frameParser.buffer = buffer
+
+  var fin = frameParser.EatBits( 1 )
+  var rsv1 = frameParser.EatBits( 1 )
+  var rsv2 = frameParser.EatBits( 1 )
+  var rsv3 = frameParser.EatBits( 1 )
+  var opcode = frameParser.EatBits( 4 )
+  var mask = frameParser.EatBits( 1 )
+  if( mask != 1 )
+  {
+    console.error( "client messages must be masked" )
+    console.error( "TODO: drop connection" )
+  }
+  var payloadLength = frameParser.EatBits( 7 )
+  if( payloadLength == 127 )
+  {
+    console.error( "i dont want a payload that big" )
+    console.error( "TODO: drop connection" )
+  }
+  if( payloadLength == 126 )
+  {
+    payloadLength = frameParser.EatNetworkBytes( 2 )
+  }
+
+  // this should stay in big endian, right?
+
+  // buffer is a Node.js Buffer
+  // buffer.buffer is the underlying ArrayBuffer object
+  var masks = new Uint8Array( buffer.buffer, frameParser.readByteCount, 4 )
+  frameParser.readByteCount += 4
+
+  // maskKey = frameParser.EatNetworkBytes( 4 )
+
+  var maskedPayload = new Uint8Array( payloadLength )
+  for( var i = 0; i < payloadLength; ++i )
+  {
+    var octet = buffer[ frameParser.readByteCount ]
+    var mask = masks[ i % 4 ]
+    octet ^= mask
+    maskedPayload[ i ] = octet
+    frameParser.readByteCount++
+  }
+
+
+
+  var maskedPayloadString = String.fromCharCode.apply( null, maskedPayload );
+
+  console.log( "masked payload string: " + maskedPayloadString )
+
   var bufferString = buffer.toString()
   if( bufferString == MatchMessageCreateRoom )
     TacMatchMessageOnCreateRoom( user )
@@ -290,37 +452,39 @@ function TacWebsocketOnClose( hadError )
 
 function TacServerOnUpgrade( request, socket, header )
 {
+  // The Websocket Protocol - Opening Handshake
+  // https://tools.ietf.org/html/rfc6455#section-1.3
+  socket.on( "data", TacWebsocketOnData )
+  socket.on( "close", TacWebsocketOnClose )
+  socket.on( "end", TacWebsocketOnEnd )
+  socket.on( "error", TacWebsocketOnError )
+  socket.on( "timeout", TacWebsocketOnTimeout )
+
   // can the socket disconnect during this function?
   var handshakeKey = request.headers[ "sec-websocket-key" ] // example: "zw8JOb8Onj6QkGMrz+waBQ=="
   var handshakeSuffix = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-  // var handshakeHash = Sha1Hash( handshakeKey + handshakeSuffix )
-  // var handshakeResult = Base64Encode( handshakeHash )
   var handshakeResult = crypto.createHash( "sha1" )
     .update(  handshakeKey + handshakeSuffix, "binary" )
-    .digest( "base64" )
-  var handshakeResult2 = crypto.createHash( "sha1" )
-    .update(  handshakeKey + handshakeSuffix )
-    .digest( "base64" )
-  var handshakeResult3 = crypto.createHash( "sha1" )
-    .update(  handshakeKey + handshakeSuffix, "ascii" )
     .digest( "base64" )
 
   
   var headers = 
   [
-    "HTTP/1.1 101 Switching Procols",
+    "HTTP/1.1 101 Switching Protocols",
     "Upgrade: websocket",
     "Connection: Upgrade",
-    "Sec-Websocket-Accept: " + handshakeResult,
+    "Sec-WebSocket-Accept: " + handshakeResult,
+
 
     "Sec-WebSocket-Protocol: tacbogus",
-    "Sec-WebSocket-Extensions:"
+    // "Sec-WebSocket-Extensions:"
     
     //"HTTP/1.1 101 Web Socket Protocol Handshake",
     //"Upgrade: WebSocket",
     //"Connection: Upgrade",
   ]
   var text = headers.join( "\r\n" ) + "\r\n";
+  text += "\r\n"
   if( shouldLogUpgrade )
   {
     tac.DebugLog( "on upgrade" )
@@ -328,18 +492,11 @@ function TacServerOnUpgrade( request, socket, header )
     tac.DebugLog( "request.headers = ", request.headers )
     tac.DebugLog( "header handshakeKey      = ", handshakeKey )
     tac.DebugLog( "header handshakeResult 1 = ", handshakeResult )
-    tac.DebugLog( "header handshakeResult 2 = ", handshakeResult2 )
-    tac.DebugLog( "header handshakeResult 3 = ", handshakeResult3 )
     tac.DebugLog( "socket.write: ", text )
   }
 
 
   socket.write( text )
-  socket.on( "data", TacWebsocketOnData )
-  socket.on( "close", TacWebsocketOnClose )
-  socket.on( "end", TacWebsocketOnEnd )
-  socket.on( "error", TacWebsocketOnError )
-  socket.on( "timeout", TacWebsocketOnTimeout )
 
 
   var user = {}
@@ -347,5 +504,8 @@ function TacServerOnUpgrade( request, socket, header )
   user.userID = userIDCounter++
   tac.users.push( user )
 }
-server.on( "upgrade", TacServerOnUpgrade )
+if( !usingWS )
+{
+  server.on( "upgrade", TacServerOnUpgrade )
+}
 

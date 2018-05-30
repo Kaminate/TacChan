@@ -63,4 +63,5 @@ typings/
 
 # visual studio
 .vs/
+.vscode/
 
