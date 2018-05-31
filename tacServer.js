@@ -256,137 +256,141 @@ function TacMatchMessageOnCreateRoom( user )
   socket.write( "Created room" )
 }
 
-
-
-function TacFrameParser()
+function TacEatNetworkBytes( bytes, byteOffset, byteCount )
 {
-  this.readByteCount = 0
-  this.readBitCount = 0
-  this.buffer = null
-  this.isLittleEndian = new Uint8Array( new Uint32Array( [ 0x12345678 ] ).buffer )[ 0 ] == 0x78
-}
-TacFrameParser.prototype.EatNetworkBytes = function ( byteCount )
-{
-  console.assert( this.readBitCount == 0 )
   var result = 0
-  var shiftSign = this.isLittleEndian ? -1 : 1;
-  var shiftBits = this.isLittleEndian ? 0 : ( byteCount - 1 ) * 8;
+  var shiftBitDelta = tac.isLittleEndian ? -8 : 8
+  var shiftBits = tac.isLittleEndian ? 0 : ( byteCount - 1 ) * 8
   for( var i = 0; i < byteCount; ++i )
   {
-    var subResult = this.buffer[ this.readByteCount + i ]
+    var subResult = bytes[ byteOffset + i ]
     result += subResult << shiftBits
-    shiftBits += shiftSign * 8
+    shiftBits += shiftBitDelta
   }
-  this.readByteCount += byteCount
   return result
 }
-TacFrameParser.prototype.EatBits = function ( bitCount )
+
+function TacSpitNetworkBytes( bytes, byteOffset, byteCount, value )
 {
-  var result = 0
-  var remainingBitCount = bitCount
+  var shiftBitDelta = tac.isLittleEndian ? -8 : 8
+  var shiftBits = tac.isLittleEndian ? ( byteCount - 1 ) * 8 : 0
 
-  while( remainingBitCount > 0 )
+  for( var iByte = 0; iByte < byteCount; ++iByte )
   {
-    var bitsCanReadCount = 8 - this.readBitCount
-    var bitsToReadCount = Math.min( bitsCanReadCount, remainingBitCount )
-
-    // grab the whole byte
-    var subResult = this.buffer[ this.readByteCount ]
-
-    // shift the bits we want to the front
-    subResult >>= 8 - ( this.readBitCount + bitsToReadCount )
-
-    // mask off the remainder, which includes bits we've already read
-    subResult &= ( 1 << bitsToReadCount ) - 1
-
-    // make room for our bits in the result
-    result <<= bitsToReadCount
-
-    // add our bits to the result
-    result |= subResult
-
-    // housekeeping
-    remainingBitCount -= bitsToReadCount
-    this.readBitCount += bitsToReadCount
-    if( this.readBitCount == 8 )
-    {
-      this.readBitCount = 0
-      this.readByteCount++
-    }
+    var curByte = ( value >> shiftBits ) & 8
+    bytes[ byteOffset + iByte ] = curByte
+    shiftBits += shiftBitDelta
   }
-
-  return result
 }
-/*
-TacFrameParser.prototype.EatBit = function ()
+
+function TacGetPayload7Bit( payloadByteCount )
 {
-  var result = 0
-  result += this.buffer[ this.readByteCount ]
-  result &= ( 1 << this.readBitCount ) + 1
-  result >>= this.readBitCount
-  this.readBitCount++
-  if( this.readBitCount == 8 )
-  {
-    this.readBitCount = 0
-    this.readByteCount++
-  }
-  return result
+  if( payloadByteCount < 126 )
+    return payloadByteCount
+  if( payloadByteCount >= ( 1 << 16 ) )
+    return 127
+  return 126
 }
-*/
+
+var maskByteCount = 4
+
+function TacWebsocketSend( socket, bytes )
+{
+  console.assert( bytes instanceof Uint8Array )
+  var toWriteByteCount = 2;
+  var payload7Bit = TacGetPayload7Bit( bytes.length )
+  var payload7BitExtByteCount = 0
+  if( payload7Bit == 126 )
+    payload7BitExtByteCount = 2
+  if( payload7Bit == 127 )
+    payload7BitExtByteCount = 8
+  toWriteByteCount += payload7BitExtByteCount
+  toWriteByteCount += bytes.length
+  var toWrite = new Uint8Array( toWriteByteCount )
+
+  var iByte = 0
+
+  var fin = 1
+  var rsv1 = 0
+  var rsv2 = 0
+  var rsv3 = 0
+  var opcode = 0x2
+  var isMasked = 0
+
+  toWrite[ iByte ] |= fin << 7
+  toWrite[ iByte ] |= rsv1 << 6
+  toWrite[ iByte ] |= rsv2 << 5
+  toWrite[ iByte ] |= rsv3 << 4
+  toWrite[ iByte ] |= opcode << 0
+  iByte++
+  toWrite[ iByte ] |= isMasked << 7
+  toWrite[ iByte ] |= payload7Bit << 0
+  iByte++
+  if( payload7Bit == 126 )
+    TacSpitNetworkBytes( toWrite, iByte, 2, bytes.length )
+  else if( payload7Bit == 127 )
+    TacSpitNetworkBytes( toWrite, iByte, 8, bytes.length )
+  iByte += payload7BitExtByteCount
+
+  console.assert( toWriteByteCount - iByte == bytes.length )
+  var iPayloadByte = 0
+  while( iByte < toWriteByteCount )
+    toWrite[ iByte++ ] = bytes[ iPayloadByte++ ]
+
+  var buffer = new Buffer( toWrite )
+  socket.write( buffer )
+}
+
 
 function TacWebsocketOnData( buffer )
 {
   var socket = this
   var user = TacGetUserBySocket( socket )
 
-
   console.assert( Buffer.isBuffer( buffer ) )
 
-  var frameParser = new TacFrameParser
-  frameParser.buffer = buffer
-
-  var fin = frameParser.EatBits( 1 )
-  var rsv1 = frameParser.EatBits( 1 )
-  var rsv2 = frameParser.EatBits( 1 )
-  var rsv3 = frameParser.EatBits( 1 )
-  var opcode = frameParser.EatBits( 4 )
-  var mask = frameParser.EatBits( 1 )
-  if( mask != 1 )
+  var iByte = 0
+  var curByte = buffer[ iByte++ ]
+  var fin = ( curByte & 0b10000000 ) >> 7
+  var rsv1 = ( curByte & 0b01000000 ) >> 6
+  var rsv2 = ( curByte & 0b00100000 ) >> 5
+  var rsv3 = ( curByte & 0b00010000 ) >> 4
+  var opcode = ( curByte & 0b00001111 ) >> 0
+  curByte = buffer[ iByte++ ]
+  var isMasked = ( curByte & 0b10000000 ) >> 7
+  if( isMasked != 1 )
   {
     console.error( "client messages must be masked" )
     console.error( "TODO: drop connection" )
   }
-  var payloadLength = frameParser.EatBits( 7 )
-  if( payloadLength == 127 )
-  {
-    console.error( "i dont want a payload that big" )
-    console.error( "TODO: drop connection" )
-  }
+  var payloadLength = ( curByte & 0b01111111 ) >> 0
+  var payload7BitExtByteCount = 0
   if( payloadLength == 126 )
   {
-    payloadLength = frameParser.EatNetworkBytes( 2 )
+    payload7BitExtByteCount = 2
+    payloadLength = TacEatNetworkBytes( buffer, iByte, payload7BitExtByteCount )
   }
+  else if( payloadLength == 127 )
+  {
+    payload7BitExtByteCount = 8
+    payloadLength = TacEatNetworkBytes( buffer, iByte, payload7BitExtByteCount )
+  }
+  iByte += payload7BitExtByteCount
 
-  // this should stay in big endian, right?
-
-  // buffer is a Node.js Buffer
-  // buffer.buffer is the underlying ArrayBuffer object
-  var masks = new Uint8Array( buffer.buffer, frameParser.readByteCount, 4 )
-  frameParser.readByteCount += 4
-
-  // maskKey = frameParser.EatNetworkBytes( 4 )
+  // note:
+  //   buffer is a Node.js Buffer
+  //   buffer.buffer is the underlying ArrayBuffer object
+  var masks = new Uint8Array( buffer.buffer, iByte, maskByteCount )
+  iByte += maskByteCount
 
   var maskedPayload = new Uint8Array( payloadLength )
   for( var i = 0; i < payloadLength; ++i )
   {
-    var octet = buffer[ frameParser.readByteCount ]
-    var mask = masks[ i % 4 ]
-    octet ^= mask
-    maskedPayload[ i ] = octet
-    frameParser.readByteCount++
+    curByte = buffer[ iByte++ ]
+    var mask = masks[ i % maskByteCount ]
+    curByte ^= mask
+    maskedPayload[ i ] = curByte
   }
-
-
 
   var maskedPayloadString = String.fromCharCode.apply( null, maskedPayload );
 
@@ -402,7 +406,15 @@ function TacWebsocketOnData( buffer )
   }
   if( shouldEchoWebsocketData )
   {
-    socket.write( buffer )
+    // socket.write( buffer )
+    // note: str.length returns the number of utf16 code units in a javascript string
+    var bytes = new Uint8Array( maskedPayloadString.length )
+    for( var i = 0; i < maskedPayloadString.length; ++i )
+    {
+      bytes[ i ] = maskedPayloadString.charCodeAt( i )
+    }
+
+    TacWebsocketSend( socket, bytes )
   }
 }
 

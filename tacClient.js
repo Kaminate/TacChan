@@ -143,6 +143,8 @@ Client.prototype.AddSocket = function ()
     {
       socket = new WebSocket( "ws://" + window.location.host, "tacbogus" )
       // socket = new WebSocket( "ws://echo.websocket.org" )
+      console.assert( socket.binaryType )
+      socket.binaryType = "arraybuffer"
         
     }
     catch( e )
@@ -173,6 +175,12 @@ Client.prototype.AddSocket = function ()
     socket.onmessage = function( e )
     {
       console.log( "WebSocket message from server : " + e.data )
+      console.log( e )
+      console.log( e.data )
+      var buffer = e.data
+      var bufferView = new Uint8Array( buffer )
+      var maskedPayloadString = String.fromCharCode.apply( null, bufferView );
+      console.log( maskedPayloadString )
     }
 }
 

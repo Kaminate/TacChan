@@ -21,6 +21,7 @@ tac.IsDebug = function()
   return !process.env.NODE_ENV || process.env.NODE_ENV == "development"
 }
 
+tac.isLittleEndian = new Uint8Array( new Uint32Array( [ 0x12345678 ] ).buffer )[ 0 ] == 0x78
 
 tac.Assert = function( value )
 {
