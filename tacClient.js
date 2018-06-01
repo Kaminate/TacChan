@@ -60,6 +60,7 @@ function Client ()
   this.Hello();
   CreateButton( this, "test button", testButton, [ "hello", 69 ] )
   CreateButton( this, "Dump It", DumpIt )
+  CreateButton( this, "Reload", function(){ window.location.reload( true ) } )
   CreateButton( this, "Print Socket Ready State", this.PrintSocketReadyState )
   CreateButton( this, "Send message to server", function(){
     if( this.socket )
@@ -71,7 +72,6 @@ function Client ()
   this.PrintSocketReadyState();
 
   this.timestampMsCreation = performance.now()
-  this.elapsedMs = 0
 
   var para = document.createElement( "p" )
   para.innerHTML = "time node"
@@ -117,71 +117,88 @@ Client.prototype.UpdateRequest = function()
 }
 Client.prototype.Update = function( timestampMs )
 {
+  var deltaTime = timestampMs - this.timestampMsCreation
 
-  this.elapsedMs = timestampMs - this.timestampMsCreation
+  var names = [ "msec", "sec", "min", "hr", "day" ]
+  var times = [ 1000,   60,    60,    60,   24    ]
+
+  var text = ""
+  var i = 0
+  console.assert( names.length == times.length )
+  while( Math.floor( deltaTime ) > 0 && i < names.length )
+  {
+    var time = times[ i ]
+    var elapsed = Math.floor( deltaTime % time )
+    var name = names[ i ] + ( elapsed == 1 ? "" : "s" )
+    deltaTime /= time
+    i++
+    text = elapsed + " " + name + " " + text
+  }
 
   var timeNode = this.timeNode
   console.assert( timeNode )
   console.assert( timeNode.innerHTML )
-  timeNode.innerHTML = "seconds: " + Math.floor( this.elapsedMs / 1000 )
+  timeNode.innerHTML = text
   this.UpdateRequest()
 }
 
 Client.prototype.AddSocket = function ()
 {
-    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Protocol_upgrade_mechanism
-    // The WebSocket() constructor does all the work of creating an initial HTTP/1.1
-    // connection then handling the handshaking and upgrade process for you.
-    //
-    console.log( this )
+  var client = this
+  // https://developer.mozilla.org/en-US/docs/Web/HTTP/Protocol_upgrade_mechanism
+  // The WebSocket() constructor does all the work of creating an initial HTTP/1.1
+  // connection then handling the handshaking and upgrade process for you.
+  //
+  console.log( this )
 
 
-    // var myTCPSocket = new TCPSocket()
+  // var myTCPSocket = new TCPSocket()
 
-    var socket = null
-    try
-    {
-      socket = new WebSocket( "ws://" + window.location.host, "tacbogus" )
-      // socket = new WebSocket( "ws://echo.websocket.org" )
-      console.assert( socket.binaryType )
-      socket.binaryType = "arraybuffer"
-        
-    }
-    catch( e )
-    {
-      console.log( "Caught error: " + String( e ) )
-    }
+  var socket = null
+  try
+  {
+    socket = new WebSocket( "ws://" + window.location.host, "tacbogus" )
+    // socket = new WebSocket( "ws://echo.websocket.org" )
+    console.assert( socket.binaryType )
+    socket.binaryType = "arraybuffer"
+      
+  }
+  catch( e )
+  {
+    console.log( "Caught error: " + String( e ) )
+  }
 
 
-    this.socket = socket
-    socket.onclose = function( closeEvent )
-    {
-      console.log( "Socket closed - " + String( closeEvent ) )
-      console.log( closeEvent )
-      console.log( closeEvent.code )
-      console.log( closeEvent.reason )
-      console.log( closeEvent.wasClean )
-    }
-    socket.onopen = function ()
-    {
-      console.log( "Connected to server" )
-      console.log( "Socket sending ping to server" )
-      socket.send( "Ping" )
-    }
-    socket.onerror = function( error )
-    {
-      console.log( "WebSocket Error " + error)
-    }
-    socket.onmessage = function( e )
-    {
-      console.log( "WebSocket message from server : " + e.data )
-      console.log( e )
-      console.log( e.data )
-      var buffer = e.data
-      var bufferView = new Uint8Array( buffer )
-      var maskedPayloadString = String.fromCharCode.apply( null, bufferView );
-      console.log( maskedPayloadString )
-    }
+  this.socket = socket
+  socket.onclose = function( closeEvent )
+  {
+    console.log( "Socket closed - " + String( closeEvent ) )
+    console.log( closeEvent )
+    console.log( closeEvent.code )
+    console.log( closeEvent.reason )
+    console.log( closeEvent.wasClean )
+  }
+  socket.onopen = function ()
+  {
+    client.PrintSocketReadyState();
+    console.log( "Connected to server" )
+    console.log( "Socket sending ping to server" )
+    socket.send( "Ping" )
+  }
+  socket.onerror = function( error )
+  {
+    console.log( "WebSocket Error " + error)
+  }
+  socket.onmessage = function( e )
+  {
+    console.log( "WebSocket message from server : " + e.data )
+    console.log( e )
+    console.log( e.data )
+    var buffer = e.data
+    var bufferView = new Uint8Array( buffer )
+    var maskedPayloadString = String.fromCharCode.apply( null, bufferView );
+    console.log( maskedPayloadString )
+  }
 }
 
 window.onload = function()
