@@ -14,6 +14,15 @@ var util = require( "util" )
 // regular vars
 var debugLogPath = __dirname + "/debug.txt"
 
+tac.ClearConsole = function()
+{
+  // https://stackoverflow.com/questions/9006988/node-js-on-windows-how-to-clear-console
+  // TODO: cross platform?
+  // TODO: how does this work?
+  // TODO: does this work?
+  console.log( "\u001b[2J\u001b[0;0H" )
+}
+
 tac.IsDebug = function()
 {
   // as opposed to production

@@ -16,6 +16,7 @@ if( usingWS )
   WebSocket = require( "ws" );
 }
 
+var os = require( "os" )
 var tac = require( "./tacUtils" )
 var http = require( "http" )
 var util = require( "util" )
@@ -49,21 +50,13 @@ if( shouldUseExpress )
 }
 // end express vars
 
+tac.DebugLog( "os.hostname: ", os.hostname )
 
 var users = []
 tac.users = users
 
 var rooms = []
 tac.rooms = rooms
-
-
-function TacClearConsole()
-{
-  // https://stackoverflow.com/questions/9006988/node-js-on-windows-how-to-clear-console
-  // TODO: cross platform?
-  // TODO: how does this work?
-  console.log( "\u001b[2J\u001b[0;0H" )
-}
 
 
 function TacGetUserInfoBySocket( socket )
@@ -200,8 +193,8 @@ if( usingWS )
   function WSIncomingMessage( message )
   {
     var ws = this
-    console.log( "Recieved" + message )
-    console.log( message )
+    tac.DebugLog( "Recieved" + message )
+    tac.DebugLog( message )
     ws.send( "ws pong " + message )
   }
   function WSSConnection( ws )
@@ -217,6 +210,11 @@ if( usingWS )
 
 
 server.listen( port )
+server.on( "listening",
+  function()
+  {
+    tac.DebugLog( "Server listening on ", server.address() )
+  } )
 function TacServerOnConnection( socket )
 {
   if( shouldLogConnections )
@@ -394,7 +392,7 @@ function TacWebsocketOnData( buffer )
 
   var maskedPayloadString = String.fromCharCode.apply( null, maskedPayload );
 
-  console.log( "masked payload string: " + maskedPayloadString )
+  tac.DebugLog( "masked payload string: " + maskedPayloadString )
 
   var bufferString = buffer.toString()
   if( bufferString == MatchMessageCreateRoom )
