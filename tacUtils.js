@@ -41,11 +41,20 @@ tac.Assert = function( value )
 
 tac.DebugLog = function( ...args )
 {
+  function Pad( number )
+  {
+    if( number < 10 )
+      return "0" + number
+    return number
+  }
+
   if( !tac.IsDebug() )
     return
-  // This should be the only console.log in all tac code,
-  // because the debug log also spits into a file
-  var line = new Date().toString() + util.format( ...args )
+  var now = new Date()
+  var line =
+    // ISO 8601
+    new Date().toISOString() + " " +
+    util.format( ...args )
   console.log( line )
   fs.appendFile( debugLogPath, line + "\n", ( err ) => {} )
 }

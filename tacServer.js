@@ -152,21 +152,15 @@ function TacRequestListener( request, response )
 }
 tac.DebugLog( "Creating Server" )
 
-var lines =
-[
+for( var line of [
   "",
   "//",
   "// TODO",
   "// Make game",
   "//",
   "",
-  "",
-  "",
-  "",
-]
-for( let iLine = 0; iLine < lines.length; ++iLine )
+  ] )
 {
-  var line = lines[ iLine ]
   tac.DebugLog( line )
 }
 
