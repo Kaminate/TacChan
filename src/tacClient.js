@@ -139,8 +139,8 @@ Client.prototype.Update = function( timestampMs )
   }
 
   var timeNode = this.timeNode
-  console.assert( timeNode )
-  console.assert( timeNode.innerHTML )
+  console.assert( null != timeNode )
+  console.assert( null != timeNode.innerHTML )
   timeNode.innerHTML = text
   this.UpdateRequest()
 }

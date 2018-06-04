@@ -9,6 +9,16 @@
 // Treat warnings as errors
 "use strict"
 
+function TacStringToUint8Array( text )
+{
+    // note: str.length returns the number of utf16 code units in a javascript string
+    var bytes = new Uint8Array( text.length )
+    for( var i = 0; i < text.length; i++ )
+      bytes[ i ] = text.charCodeAt( i )
+    return bytes
+}
+
+
 var usingWS = false
 var WebSocket = null
 if( usingWS )
@@ -38,6 +48,14 @@ var shouldLogWebsocketTimeout = true
 // mirrored in tacscriptgameclient.h
 var MatchMessageCreateRoom = "create room"
 var userIDCounter = 0
+
+
+var commandMap = {}
+if( tac.IsDebug() )
+{
+  commandMap[ "clear console" ] = tac.ClearConsole
+  commandMap[ "debug log" ] = tac.DebugLog
+}
 
 
 
@@ -421,13 +439,7 @@ function TacWebsocketOnData( buffer )
 
   if( shouldEchoWebsocketData )
   {
-    // socket.write( buffer )
-    // note: str.length returns the number of utf16 code units in a javascript string
-    var bytes = new Uint8Array( maskedPayloadString.length )
-    for( var i = 0; i < maskedPayloadString.length; ++i )
-    {
-      bytes[ i ] = maskedPayloadString.charCodeAt( i )
-    }
+    var bytes = TacStringToUint8Array( maskedPayloadString )
 
     TacWebsocketSend( socket, bytes )
   }
@@ -530,6 +542,20 @@ function TacServerOnUpgrade( request, socket, header )
   user.socket = socket
   user.userID = userIDCounter++
   tac.users.push( user )
+
+
+  if( tac.IsDebug() )
+  {
+    var commandNames = []
+    for( var commandName in commandMap )
+      commandNames.push( commandName )
+    var message = {}
+    message.name = "commandMap"
+    message.args = commandNames
+    text = JSON.stringify( message ) 
+    var bytes = TacStringToUint8Array( text )
+    TacWebsocketSend( socket, bytes )
+  }
 }
 if( !usingWS )
 {
