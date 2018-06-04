@@ -3,8 +3,10 @@
 // Treat warnings as errors
 "use strict"
 
+var tac = require( "./tacUtils" )
 
 console.log( "hello world client" )
+tac.DebugLog( "hello world client tac.DebugLog" )
 
 // var client = null
 

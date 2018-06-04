@@ -20,6 +20,7 @@ var os = require( "os" )
 var tac = require( "./tacUtils" )
 var http = require( "http" )
 var util = require( "util" )
+var path = require( "path" )
 var fs = require( "fs" )
 var crypto = require( "crypto" );
 var express = null
@@ -37,6 +38,15 @@ var shouldLogWebsocketTimeout = true
 // mirrored in tacscriptgameclient.h
 var MatchMessageCreateRoom = "create room"
 var userIDCounter = 0
+
+
+
+var logPath = "./debugServer.txt"
+fs.truncate( logPath, ( err ) => {} )
+tac.DebugLogPost = function( line )
+{
+  fs.appendFile( logPath, line + "\n", ( err ) => {} )
+}
 
 // begin express vars
 var shouldUseExpress = false
@@ -121,16 +131,19 @@ function TacRequestListener( request, response )
 
   function TrySendFileToClient( response, filepath )
   {
+    // hacks
     var allowedFiles = [
       "favicon.ico",
-      "tacClient.js",
+      "tacClientBundle.js",
       "tacClient.html" ]
-    var included = allowedFiles.includes( filepath )
+    var basename = path.posix.basename( filepath );
+    var included = allowedFiles.includes( basename )
     if( !included )
     {
-      tac.DebugLog( "Refuse to send file " + filepath )
+      tac.DebugLog( "Refuse to send file " + filepath + " is not in the allowed list" )
       return
     }
+    // filepath = "./src/" + filepath
     function OnReadFile( err, buffer )
     {
       if( err )
@@ -147,7 +160,7 @@ function TacRequestListener( request, response )
   // remove the first "/" character
   var filepath = request.url.substring( 1 )
   if( filepath == "" )
-    filepath = "tacClient.html"
+    filepath = "./src/tacClient.html"
   TrySendFileToClient( response, filepath )
 }
 tac.DebugLog( "Creating Server" )
@@ -334,8 +347,13 @@ function TacWebsocketSend( socket, bytes )
 }
 
 
+
 function TacWebsocketOnData( buffer )
 {
+  var bufferString = buffer.toString()
+  if( shouldLogWebsocketData )
+    tac.DebugLog( "TacWebsocketOnData()", bufferString )
+
   var socket = this
   var user = TacGetUserBySocket( socket )
 
@@ -344,18 +362,25 @@ function TacWebsocketOnData( buffer )
   var iByte = 0
   var curByte = buffer[ iByte++ ]
   var fin = ( curByte & 0b10000000 ) >> 7
+  if( shouldLogWebsocketData )
+    tac.DebugLog( "Fin", fin )
   var rsv1 = ( curByte & 0b01000000 ) >> 6
   var rsv2 = ( curByte & 0b00100000 ) >> 5
   var rsv3 = ( curByte & 0b00010000 ) >> 4
   var opcode = ( curByte & 0b00001111 ) >> 0
+    tac.DebugLog( "Opcode", opcode )
   curByte = buffer[ iByte++ ]
   var isMasked = ( curByte & 0b10000000 ) >> 7
+  if( shouldLogWebsocketData )
+    tac.DebugLog( "isMasked", isMasked )
   if( isMasked != 1 )
   {
     console.error( "client messages must be masked" )
     console.error( "TODO: drop connection" )
   }
   var payloadLength = ( curByte & 0b01111111 ) >> 0
+  if( shouldLogWebsocketData )
+    tac.DebugLog( "payloadLength", payloadLength )
   var payload7BitExtByteCount = 0
   if( payloadLength == 126 )
   {
@@ -367,6 +392,8 @@ function TacWebsocketOnData( buffer )
     payload7BitExtByteCount = 8
     payloadLength = TacEatNetworkBytes( buffer, iByte, payload7BitExtByteCount )
   }
+  if( shouldLogWebsocketData )
+    tac.DebugLog( "payloadLength", payloadLength )
   iByte += payload7BitExtByteCount
 
   // note:
@@ -386,16 +413,12 @@ function TacWebsocketOnData( buffer )
 
   var maskedPayloadString = String.fromCharCode.apply( null, maskedPayload );
 
-  tac.DebugLog( "masked payload string: " + maskedPayloadString )
+  if( shouldLogWebsocketData )
+    tac.DebugLog( "masked payload string: " + maskedPayloadString )
 
-  var bufferString = buffer.toString()
   if( bufferString == MatchMessageCreateRoom )
     TacMatchMessageOnCreateRoom( user )
 
-  if( shouldLogWebsocketData )
-  {
-    tac.DebugLog( "TacWebsocketOnData()" + bufferString )
-  }
   if( shouldEchoWebsocketData )
   {
     // socket.write( buffer )

@@ -1,3 +1,5 @@
+// This file is include by both client & server code, so it can't include node stuff
+
 "use strict"
 
 var tac =
@@ -6,13 +8,6 @@ var tac =
   Assert: null,
   DebugLog: null
 }
-
-// requires
-var fs = require( "fs" )
-var util = require( "util" )
-
-// regular vars
-var debugLogPath = __dirname + "/debug.txt"
 
 tac.ClearConsole = function()
 {
@@ -53,16 +48,23 @@ tac.DebugLog = function( ...args )
   var now = new Date()
   var line =
     // ISO 8601
-    new Date().toISOString() + " " +
-    util.format( ...args )
-  console.log( line )
-  fs.appendFile( debugLogPath, line + "\n", ( err ) => {} )
-}
+    new Date().toISOString() + " "
+  for( var arg of args )
+  {
+    var argString = ""
+    if( typeof arg == "object" )
+      argString = JSON.stringify( arg, null, "\t" )
+    else
+      argString = String( arg )
+    line += argString + " "
+  }
 
-if( tac.IsDebug() )
-{
-  fs.truncate( debugLogPath, ( err ) => {} )
-  tac.DebugLog( "Debug Mode Activated" )
+  console.log( line )
+
+  if( tac.DebugLogPost )
+  {
+    tac.DebugLogPost( line )
+  }
 }
 
 module.exports = tac
