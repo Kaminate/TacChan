@@ -1,21 +1,12 @@
-// This file is include by both client & server code, so it can't include node stuff
-
 "use strict"
+
+var readline = require( "readline" )
 
 var tac =
 {
   IsDebug: null,
   Assert: null,
   DebugLog: null
-}
-
-tac.ClearConsole = function()
-{
-  // https://stackoverflow.com/questions/9006988/node-js-on-windows-how-to-clear-console
-  // TODO: cross platform?
-  // TODO: how does this work?
-  // TODO: does this work?
-  console.log( "\u001b[2J\u001b[0;0H" )
 }
 
 tac.IsDebug = function()

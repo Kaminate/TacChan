@@ -3,16 +3,8 @@
 // Treat warnings as errors
 "use strict"
 
-var tac = require( "./tacUtils" )
 
 console.log( "hello world client" )
-tac.DebugLog( "hello world client tac.DebugLog" )
-
-// var client = null
-
-//
-//
-//
 
 function CreateButton(
   functionThis,
@@ -81,6 +73,10 @@ function Client ()
   document.body.appendChild( para )
   this.timeNode = para
   this.UpdateRequest()
+
+  var serverLogText = document.createElement( "input" )
+  document.body.appendChild( serverLogText )
+  this.serverLogText = serverLogText
 }
 
 Client.prototype.PrintSocketReadyState  = function ()
@@ -145,7 +141,11 @@ Client.prototype.Update = function( timestampMs )
   this.UpdateRequest()
 }
 
-Client.prototype.AddSocket = function ()
+Client.prototype.SendServerCommand = function( socket, commandName )
+{
+}
+
+Client.prototype.AddSocket = function()
 {
   var client = this
   // https://developer.mozilla.org/en-US/docs/Web/HTTP/Protocol_upgrade_mechanism
@@ -171,6 +171,15 @@ Client.prototype.AddSocket = function ()
     console.log( "Caught error: " + String( e ) )
   }
 
+  function SendCommand( name, args )
+  {
+    var obj = {}
+    obj.name = name
+    obj.args = args
+    var text = JSON.stringify( obj )
+    socket.send( text )
+  }
+
 
   this.socket = socket
   socket.onclose = function( closeEvent )
@@ -186,7 +195,7 @@ Client.prototype.AddSocket = function ()
     client.PrintSocketReadyState();
     console.log( "Connected to server" )
     console.log( "Socket sending ping to server" )
-    socket.send( "Ping" )
+    SendCommand( "Ping" )
   }
   socket.onerror = function( error )
   {
@@ -202,11 +211,21 @@ Client.prototype.AddSocket = function ()
     var maskedPayloadString = String.fromCharCode.apply( null, bufferView );
     console.log( maskedPayloadString )
   }
+
+  CreateButton( this, "Clear server console", function()
+  {
+    SendCommand( "clear console", [] )
+  } )
+  CreateButton( this, "Print server console", function()
+  {
+    SendCommand( "debug log", [ this.serverLogText.value ] )
+  } )
+
+
 }
 
 window.onload = function()
 {
-  // client = new Client
-  new Client
+  window.client = new Client
 }
 

@@ -50,12 +50,6 @@ var MatchMessageCreateRoom = "create room"
 var userIDCounter = 0
 
 
-var commandMap = {}
-if( tac.IsDebug() )
-{
-  commandMap[ "clear console" ] = tac.ClearConsole
-  commandMap[ "debug log" ] = tac.DebugLog
-}
 
 
 
@@ -152,7 +146,7 @@ function TacRequestListener( request, response )
     // hacks
     var allowedFiles = [
       "favicon.ico",
-      "tacClientBundle.js",
+      "tacClient.js",
       "tacClient.html" ]
     var basename = path.posix.basename( filepath );
     var included = allowedFiles.includes( basename )
@@ -397,6 +391,8 @@ function TacWebsocketOnData( buffer )
     console.error( "TODO: drop connection" )
   }
   var payloadLength = ( curByte & 0b01111111 ) >> 0
+  tac.DebugLog( "payloadLength", payloadLength )
+  tac.DebugLog( "curByte", curByte )
   if( shouldLogWebsocketData )
     tac.DebugLog( "payloadLength", payloadLength )
   var payload7BitExtByteCount = 0
@@ -443,6 +439,41 @@ function TacWebsocketOnData( buffer )
 
     TacWebsocketSend( socket, bytes )
   }
+
+  var obj = null
+  try
+  {
+    obj = JSON.parse( maskedPayloadString )
+  }
+  catch( syntaxError )
+  {
+    tac.DebugLog( "syntax error", syntaxError.message )
+    tac.DebugLog( "parsing", maskedPayloadString )
+  }
+  if( obj == null )
+  {
+  }
+  else if( obj.name == "debug log" )
+  {
+    tac.DebugLog( obj.args[ 0 ] )
+  }
+  else if( obj.name == "clear console" )
+  {
+    console.clear()
+  }
+  else if( obj.name == "Ping" )
+  {
+    if( obj.args && obj.args.length > 0 )
+      tac.DebugLog( "Ping", obj.args[ 0 ] )
+    var bytes = TacStringToUint8Array( "Pong" )
+    TacWebsocketSend( socket, bytes )
+  }
+  else
+  {
+    tac.DebugLog( "Unrecognized command " + obj.name )
+  }
+
+
 }
 
 function TacWebsocketOnTimeout()
@@ -542,20 +573,6 @@ function TacServerOnUpgrade( request, socket, header )
   user.socket = socket
   user.userID = userIDCounter++
   tac.users.push( user )
-
-
-  if( tac.IsDebug() )
-  {
-    var commandNames = []
-    for( var commandName in commandMap )
-      commandNames.push( commandName )
-    var message = {}
-    message.name = "commandMap"
-    message.args = commandNames
-    text = JSON.stringify( message ) 
-    var bytes = TacStringToUint8Array( text )
-    TacWebsocketSend( socket, bytes )
-  }
 }
 if( !usingWS )
 {
