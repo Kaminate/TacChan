@@ -277,10 +277,13 @@ function TacEatNetworkBytes( bytes, byteOffset, byteCount )
 {
   var result = 0
   var shiftBitDelta = tac.isLittleEndian ? -8 : 8
-  var shiftBits = tac.isLittleEndian ? 0 : ( byteCount - 1 ) * 8
+  var shiftBits = tac.isLittleEndian ? ( byteCount - 1 ) * 8 : 0
   for( var i = 0; i < byteCount; ++i )
   {
-    var subResult = bytes[ byteOffset + i ]
+    var iByte =  byteOffset + i 
+    var subResult = bytes[ iByte ]
+    tac.DebugLog( "iByte", iByte, "subResult", ( subResult ).toString( 2 ) )
+    
     result += subResult << shiftBits
     shiftBits += shiftBitDelta
   }
@@ -406,8 +409,16 @@ function TacWebsocketOnData( buffer )
     payload7BitExtByteCount = 8
     payloadLength = TacEatNetworkBytes( buffer, iByte, payload7BitExtByteCount )
   }
+
+
+  tac.DebugLog( "payload7BitExtByteCount", payload7BitExtByteCount )
   if( shouldLogWebsocketData )
     tac.DebugLog( "payloadLength", payloadLength )
+  if( payloadLength > 1000 )
+  {
+    tac.DebugLog( "wtf is with your payload length" )
+    return
+  }
   iByte += payload7BitExtByteCount
 
   // note:
