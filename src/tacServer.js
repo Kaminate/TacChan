@@ -252,7 +252,6 @@ function TacServerOnConnection( socket )
 
 
 
-
 function TacMatchMessageOnCreateRoom( user )
 {
   var socket = user.socket
@@ -437,9 +436,6 @@ function TacWebsocketOnData( buffer )
   if( shouldLogWebsocketData )
     tac.DebugLog( "masked payload string: " + maskedPayloadString )
 
-  if( bufferString == MatchMessageCreateRoom )
-    TacMatchMessageOnCreateRoom( user )
-
   if( shouldEchoWebsocketData )
   {
     var bytes = TacStringToUint8Array( maskedPayloadString )
@@ -474,6 +470,10 @@ function TacWebsocketOnData( buffer )
       tac.DebugLog( "Ping", obj.args[ 0 ] )
     var bytes = TacStringToUint8Array( "Pong" )
     TacWebsocketSend( socket, bytes )
+  }
+  else if( obj.name == MatchMessageCreateRoom )
+  {
+    TacMatchMessageOnCreateRoom( user )
   }
   else
   {
