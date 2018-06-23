@@ -135,6 +135,8 @@ Client.prototype.Update = function( timestampMs )
     text = elapsed + " " + name + " " + text
   }
 
+  text = "This webpage has been open for " + text
+
   var timeNode = this.timeNode
   console.assert( null != timeNode )
   console.assert( null != timeNode.innerHTML )
