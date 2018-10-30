@@ -67,5 +67,7 @@ typings/
 .vscode/
 
 tacClientBundle.js
+hacks.py
+.hacks
 
 
